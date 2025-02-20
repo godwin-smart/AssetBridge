@@ -97,3 +97,45 @@
     )
   )
 )
+
+;; Private Functions - Validation
+(define-private (is-valid-metadata-uri (uri (string-utf8 256)))
+  (and 
+    (> (len uri) u0)
+    (<= (len uri) u256)
+    (> (len uri) u5)
+  )
+)
+
+(define-private (is-valid-asset-id (asset-id uint))
+  (and
+    (> asset-id u0)
+    (< asset-id (var-get next-asset-id))
+  )
+)
+
+(define-private (is-valid-principal (user principal))
+  (and
+    (not (is-eq user CONTRACT-OWNER))
+    (not (is-eq user (as-contract tx-sender)))
+  )
+)
+
+(define-private (is-compliance-check-passed 
+  (asset-id uint) 
+  (user principal)
+) 
+  (match (map-get? compliance-status {asset-id: asset-id, user: user})
+    compliance-data (get is-approved compliance-data)
+    false
+  )
+)
+
+;; Private Functions - Share Management
+(define-private (get-shares (asset-id uint) (owner principal))
+  (default-to u0 
+    (get shares 
+      (map-get? share-ownership {asset-id: asset-id, owner: owner})
+    )
+  )
+)
