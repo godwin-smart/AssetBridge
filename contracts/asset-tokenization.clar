@@ -139,3 +139,47 @@
     )
   )
 )
+
+(define-private (set-shares (asset-id uint) (owner principal) (amount uint))
+  (map-set share-ownership 
+    {asset-id: asset-id, owner: owner}
+    {shares: amount}
+  )
+)
+
+;; Public Functions - Asset Management
+(define-public (create-asset 
+  (total-supply uint) 
+  (fractional-shares uint)
+  (metadata-uri (string-utf8 256))
+)
+  (begin 
+    (asserts! (> total-supply u0) ERR-INVALID-INPUT)
+    (asserts! (> fractional-shares u0) ERR-INVALID-INPUT)
+    (asserts! (<= fractional-shares total-supply) ERR-INVALID-INPUT)
+    (asserts! (is-valid-metadata-uri metadata-uri) ERR-INVALID-INPUT)
+    
+    (let ((asset-id (var-get next-asset-id)))
+      (map-set asset-registry 
+        {asset-id: asset-id}
+        {
+          owner: tx-sender,
+          total-supply: total-supply,
+          fractional-shares: fractional-shares,
+          metadata-uri: metadata-uri,
+          is-transferable: true,
+          created-at: block-height
+        }
+      )
+      
+      ;; Initialize share ownership
+      (set-shares asset-id tx-sender total-supply)
+      
+      (unwrap! (nft-mint? asset-ownership-token asset-id tx-sender) ERR-TRANSFER-FAILED)
+      (unwrap! (log-event u"ASSET_CREATED" asset-id tx-sender) ERR-EVENT-LOGGING)
+      
+      (var-set next-asset-id (+ asset-id u1))
+      (ok asset-id)
+    )
+  )
+)
