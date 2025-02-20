@@ -183,3 +183,76 @@
     )
   )
 )
+
+(define-public (transfer-fractional-ownership 
+  (asset-id uint) 
+  (to-principal principal) 
+  (amount uint)
+)
+  (let (
+    (asset (unwrap! (map-get? asset-registry {asset-id: asset-id}) ERR-INVALID-ASSET))
+    (sender tx-sender)
+    (sender-shares (get-shares asset-id sender))
+  )
+    (asserts! (is-valid-asset-id asset-id) ERR-INVALID-INPUT)
+    (asserts! (is-valid-principal to-principal) ERR-INVALID-INPUT)
+    (asserts! (get is-transferable asset) ERR-UNAUTHORIZED)
+    (asserts! (is-compliance-check-passed asset-id to-principal) ERR-COMPLIANCE-CHECK-FAILED)
+    (asserts! (>= sender-shares amount) ERR-INSUFFICIENT-SHARES)
+    
+    ;; Update share balances
+    (set-shares asset-id sender (- sender-shares amount))
+    (set-shares asset-id to-principal (+ (get-shares asset-id to-principal) amount))
+    
+    (unwrap! (log-event u"TRANSFER" asset-id sender) ERR-EVENT-LOGGING)
+    
+    (if (is-eq sender-shares amount)
+      (unwrap! (nft-transfer? asset-ownership-token asset-id sender to-principal) ERR-TRANSFER-FAILED)
+      true
+    )
+    
+    (ok true)
+  )
+)
+
+(define-public (set-compliance-status 
+  (asset-id uint) 
+  (user principal) 
+  (is-approved bool)
+)
+  (begin
+    (asserts! (is-valid-asset-id asset-id) ERR-INVALID-INPUT)
+    (asserts! (is-valid-principal user) ERR-INVALID-INPUT)
+    (asserts! (is-eq tx-sender CONTRACT-OWNER) ERR-UNAUTHORIZED)
+    
+    (map-set compliance-status 
+      {asset-id: asset-id, user: user} 
+      {
+        is-approved: is-approved,
+        last-updated: block-height,
+        approved-by: tx-sender
+      }
+    )
+    
+    (unwrap! (log-event u"COMPLIANCE_UPDATE" asset-id user) ERR-EVENT-LOGGING)
+    
+    (ok is-approved)
+  )
+)
+
+;; Read-only Functions
+(define-read-only (get-asset-details (asset-id uint))
+  (map-get? asset-registry {asset-id: asset-id})
+)
+
+(define-read-only (get-owner-shares (asset-id uint) (owner principal))
+  (ok (get-shares asset-id owner))
+)
+
+(define-read-only (get-compliance-details (asset-id uint) (user principal))
+  (map-get? compliance-status {asset-id: asset-id, user: user})
+)
+
+(define-read-only (get-event (event-id uint))
+  (map-get? events {event-id: event-id})
+)
