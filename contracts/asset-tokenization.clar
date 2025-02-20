@@ -89,7 +89,7 @@
           event-type: event-type,
           asset-id: asset-id,
           principal1: principal1,
-          timestamp: block-height
+          timestamp: stacks-block-height
         }
       )
       (var-set last-event-id event-id)
@@ -168,7 +168,7 @@
           fractional-shares: fractional-shares,
           metadata-uri: metadata-uri,
           is-transferable: true,
-          created-at: block-height
+          created-at: stacks-block-height
         }
       )
       
@@ -229,7 +229,7 @@
       {asset-id: asset-id, user: user} 
       {
         is-approved: is-approved,
-        last-updated: block-height,
+        last-updated: stacks-block-height,
         approved-by: tx-sender
       }
     )
